@@ -3,12 +3,10 @@ services:
     name: tcldcam
     env: node
     buildCommand: npm ci && npx expo export -p web
-    startCommand: npx serve dist -l $PORT -s --cors
+    startCommand: node server.js
     region: oregon
     plan: free
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
         value: 18
-      - key: NPM_CONFIG_PRODUCTION
-        value: false
