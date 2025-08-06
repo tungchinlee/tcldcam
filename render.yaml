@@ -12,3 +12,5 @@ services:
         value: 18
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: $PORT
