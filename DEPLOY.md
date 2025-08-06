@@ -1,13 +1,13 @@
 # 🐳 TCLDCAM Docker 部署狀態
 
 ## 最新版本
-**v1.0.2** - 2025-08-07 00:40:50
+**v1.0.3** - 2025-08-07 00:44:08
 
 ## 部署說明
-Add Docker containerization support
+Demonstrate Docker versioning system
 
 ## Docker 鏡像
-- `tcldcam:v1.0.2`
+- `tcldcam:v1.0.3`
 - `tcldcam:latest`
 
 ## 部署URL
@@ -21,15 +21,15 @@ Add Docker containerization support
 docker-compose up -d
 
 # 或直接運行
-docker run -p 8080:8080 tcldcam:v1.0.2
+docker run -p 8080:8080 tcldcam:v1.0.3
 ```
 
 ## 版本歷史
+ed4d32f 🐳 Docker Deploy v1.0.2 - Add Docker containerization support
 809e584 🚀 Deploy v1.0.1 - Setup automated versioning system
 9f7fa0b 🚀 Manual deploy trigger - Force Render deployment
 25d5181 🔧 Fix Render deployment with Express server
 9e31add 🔧 Fix Node.js TypeScript execution error
-fa26c4d 🔧 Fix Render deployment configuration
 
 ## 技術棧
 - React Native + Expo
