@@ -1,9 +1,10 @@
 {
   "name": "tcldcamexpo",
-  "version": "1.0.3",
-  "main": "server.js",
+  "version": "1.0.4",
+  "main": "start.js",
   "scripts": {
-    "start": "expo start",
+    "start": "node server.js",
+    "dev": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
