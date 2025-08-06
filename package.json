@@ -1,6 +1,6 @@
 {
   "name": "tcldcamexpo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -8,7 +8,14 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build": "npx expo export -p web",
-    "serve": "npx serve dist -l 8080 -s --cors"
+    "serve": "npx serve dist -l 8080 -s --cors",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "deploy:patch": "npm run version:patch && npm run build && npm run deploy:push",
+    "deploy:minor": "npm run version:minor && npm run build && npm run deploy:push",
+    "deploy:major": "npm run version:major && npm run build && npm run deploy:push",
+    "deploy:push": "git add . && git commit -m \"🚀 Deploy v$(node -p \"require('./package.json').version\") - $(date '+%Y-%m-%d %H:%M')\" && git push origin main"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",

@@ -1,24 +1,31 @@
 # 🚀 TCLDCAM 部署狀態
 
-## 部署時間
-2025-08-07 00:35 (手動觸發)
+## 最新版本
+**v1.0.1** - 2025-08-07 00:37:21
 
-## 當前狀態
-- ✅ GitHub倉庫：https://github.com/tungchinlee/tcldcam
-- ✅ Express服務器：server.js 已創建
-- ✅ 構建命令：npm ci && npx expo export -p web  
-- ✅ 啟動命令：node server.js
-- 🔄 等待Render部署：https://tcldcam.onrender.com
+## 部署說明
+Setup automated versioning system
+
+## 部署URL
+- 生產環境: https://tcldcam.onrender.com
+- GitHub: https://github.com/tungchinlee/tcldcam
+
+## 版本歷史
+9f7fa0b 🚀 Manual deploy trigger - Force Render deployment
+25d5181 🔧 Fix Render deployment with Express server
+9e31add 🔧 Fix Node.js TypeScript execution error
+fa26c4d 🔧 Fix Render deployment configuration
+937326c 🚀 Initial commit: TCLDCAM Expo app ready for deployment
 
 ## 技術棧
 - React Native + Expo
 - TypeScript
 - Express.js服務器
-- 靜態文件服務
+- 自動化版本管理
 
-## 功能
-- 聲音偵測
-- 視覺偵測  
-- 自動錄製
-- 檔案管理
-- 4個主要介面
+## 功能特性
+- 聲音偵測與錄製
+- 視覺模式偵測
+- 檔案管理系統
+- AI模型管理
+- 響應式Web界面
