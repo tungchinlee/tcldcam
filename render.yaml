@@ -1,12 +1,13 @@
 services:
   - type: web
     name: tcldcam
-    env: node
-    buildCommand: npm ci && npx expo export -p web
-    startCommand: node server.js
+    env: docker
+    dockerfilePath: ./Dockerfile
     region: oregon
     plan: free
     healthCheckPath: /
     envVars:
-      - key: NODE_VERSION
-        value: 18
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: $PORT
