@@ -23,11 +23,14 @@ app.use(express.static(staticPath));
 app.get('*', (req, res) => {
   const indexPath = path.join(staticPath, 'index.html');
   
-  // 檢查index.html是否存在
-  if (fs.existsSync(indexPath)) {
+  // 立即提供完整的靜態web應用，不等待建構
+  const staticWebPath = path.join(__dirname, 'static-web.html');
+  if (fs.existsSync(staticWebPath)) {
+    res.sendFile(staticWebPath);
+  } else if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    // 提供臨時載入頁面
+    // 提供載入頁面作為後備
     res.send(`
       <!DOCTYPE html>
       <html lang="zh-TW">
