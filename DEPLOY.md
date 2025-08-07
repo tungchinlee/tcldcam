@@ -1,13 +1,13 @@
 # 🐳 TCLDCAM Docker 部署狀態
 
 ## 最新版本
-**v1.0.4** - 2025-08-07 00:59:21
+**v1.0.8** - 2025-08-07 13:29:43
 
 ## 部署說明
-Fix Render startup command definitively
+Include server.js in Docker build - remove from dockerignore
 
 ## Docker 鏡像
-- `tcldcam:v1.0.4`
+- `tcldcam:v1.0.8`
 - `tcldcam:latest`
 
 ## 部署URL
@@ -21,15 +21,15 @@ Fix Render startup command definitively
 docker-compose up -d
 
 # 或直接運行
-docker run -p 8080:8080 tcldcam:v1.0.4
+docker run -p 8080:8080 tcldcam:v1.0.8
 ```
 
 ## 版本歷史
+372d10f 🔧 Add postinstall script to generate dist folder
+9753743 🔧 Fix static file path for Render deployment
+e94a2d9 🔧 Create index.ts wrapper for Render compatibility
+e0daec9 🐳 Docker Deploy v1.0.4 - Fix Render startup command definitively
 7c8bc00 🔧 Fix Render startup command
-d610620 🧪 Test automatic Render deployment
-d4767c8 🔧 Switch to Node.js deployment for better Render compatibility
-f48b68a 🐳 Docker Deploy v1.0.3 - Demonstrate Docker versioning system
-ed4d32f 🐳 Docker Deploy v1.0.2 - Add Docker containerization support
 
 ## 技術棧
 - React Native + Expo

@@ -45,3 +45,7 @@ coverage
 deploy.sh
 deploy-trigger.md
 VERSION-GUIDE.md
+
+# Server files (excluded from web build via Metro config)
+start.js
+index.ts
