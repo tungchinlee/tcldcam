@@ -22,7 +22,7 @@ if (!fs.existsSync(distPath) || !fs.existsSync(path.join(distPath, 'index.html')
   require('./server.js');
   
   // Build in background with optimized settings
-  const buildProcess = spawn('npx', ['expo', 'export', '-p', 'web', '--dev', 'false'], {
+  const buildProcess = spawn('npx', ['expo', 'export', '--platform', 'web'], {
     cwd: __dirname,
     stdio: 'pipe',
     env: { 

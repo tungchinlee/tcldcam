@@ -8,7 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "NODE_ENV=production npx expo export -p web --dev false",
+    "build": "NODE_ENV=production npx expo export --platform web",
     "serve": "npx serve dist -l 8080 -s --cors",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
