@@ -1,6 +1,6 @@
 {
   "name": "tcldcamexpo",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
@@ -8,7 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "npx expo export -p web",
+    "build": "NODE_ENV=production npx expo export -p web --dev false",
     "serve": "npx serve dist -l 8080 -s --cors",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
