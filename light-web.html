@@ -422,38 +422,82 @@
         }
         
         async function startAutoDetection() {
-            // Request permissions for audio and video
-            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            
-            // Setup audio detection
-            if (detectionSettings.audioAutoTrigger) {
-                setupAudioDetection(audioStream);
+            try {
+                console.log('🎵 請求音頻權限...');
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('✅ 音頻權限獲取成功');
+                
+                // Setup audio detection first
+                if (detectionSettings.audioAutoTrigger) {
+                    setupAudioDetection(audioStream);
+                    audioDetectionActive = true;
+                    console.log('✅ 音頻偵測已啟動');
+                }
+                
+                // Try video separately (might be denied)
+                if (detectionSettings.motionDetection) {
+                    try {
+                        console.log('📹 請求視頻權限...');
+                        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        console.log('✅ 視頻權限獲取成功');
+                        setupVisualDetection(videoStream);
+                        visualDetectionActive = true;
+                        console.log('✅ 視覺偵測已啟動');
+                    } catch (videoError) {
+                        console.log('⚠️ 視頻權限被拒絕，僅使用音頻偵測');
+                        visualDetectionActive = false;
+                    }
+                }
+                
+                stream = audioStream; // Keep reference for cleanup
+                
+                // 顯示設定資訊
+                console.log(`🎵 音頻闾值: ${detectionSettings.audioThreshold} dB`);
+                console.log(`👁️ 視覺靈敏度: ${detectionSettings.visualSensitivity}%`);
+                console.log(`⏱️ 錄製時長: ${detectionSettings.audioDuration} 秒`);
+                
+            } catch (error) {
+                console.error('自動偵測啟動失敗:', error);
+                throw error;
             }
-            
-            // Setup visual detection
-            if (detectionSettings.motionDetection) {
-                setupVisualDetection(videoStream);
-            }
-            
-            stream = audioStream; // Keep reference for cleanup
-            audioDetectionActive = true;
-            visualDetectionActive = true;
         }
         
         function setupAudioDetection(audioStream) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            microphone = audioContext.createMediaStreamSource(audioStream);
-            
-            analyser.fftSize = 256;
-            const bufferLength = analyser.frequencyBinCount;
-            dataArray = new Uint8Array(bufferLength);
-            
-            microphone.connect(analyser);
-            
-            // Start audio monitoring
-            monitorAudio();
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Check if context is suspended (common in mobile browsers)
+                if (audioContext.state === 'suspended') {
+                    console.log('🔊 音頻上下文被暫停，嘗試恢復...');
+                    audioContext.resume().then(() => {
+                        console.log('✅ 音頻上下文恢復成功');
+                    });
+                }
+                
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(audioStream);
+                
+                // 更高的 FFT 大小提高精度
+                analyser.fftSize = 512; // 增加到 512
+                analyser.smoothingTimeConstant = 0.3; // 輕微平滑化
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                microphone.connect(analyser);
+                
+                console.log('🎵 音頻偵測初始化成功');
+                console.log(`   - FFT 大小: ${analyser.fftSize}`);
+                console.log(`   - 緩衝區長度: ${bufferLength}`);
+                console.log(`   - 樣本率: ${audioContext.sampleRate} Hz`);
+                console.log(`   - 音頻上下文狀態: ${audioContext.state}`);
+                
+                // Start audio monitoring
+                monitorAudio();
+                
+            } catch (error) {
+                console.error('音頻偵測初始化失敗:', error);
+                throw error;
+            }
         }
         
         function setupVisualDetection(videoStream) {
@@ -477,23 +521,37 @@
         }
         
         function monitorAudio() {
-            if (!audioDetectionActive) return;
+            if (!audioDetectionActive || !analyser) return;
             
-            analyser.getByteFrequencyData(dataArray);
-            
-            // Calculate average volume
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-                sum += dataArray[i];
-            }
-            const averageVolume = sum / dataArray.length;
-            
-            // Update volume display
-            document.getElementById('volume').textContent = `${Math.floor(averageVolume * 0.4)} dB`;
-            
-            // Check if volume exceeds threshold
-            if (averageVolume > detectionSettings.audioThreshold * 2.55) { // Convert to 0-255 scale
-                triggerAudioDetection(averageVolume);
+            try {
+                analyser.getByteFrequencyData(dataArray);
+                
+                // Calculate RMS (Root Mean Square) for more accurate volume
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i] * dataArray[i];
+                }
+                const rms = Math.sqrt(sum / dataArray.length);
+                const volumeDb = Math.max(0, Math.min(100, Math.floor(rms * 0.8))); // More sensitive scaling
+                
+                // Update volume display
+                document.getElementById('volume').textContent = `${volumeDb} dB`;
+                
+                // 更低的闾值設定（原始值太高）
+                const threshold = Math.max(15, detectionSettings.audioThreshold * 0.6); // 降低闾值
+                
+                // Debug info
+                if (rms > 10) { // 只在有聲音時顯示詳細資訊
+                    console.log(`🎵 音頻監控: RMS=${rms.toFixed(1)}, 音量=${volumeDb}dB, 闾值=${threshold}dB`);
+                }
+                
+                // Check if volume exceeds threshold
+                if (rms > threshold) {
+                    triggerAudioDetection(volumeDb);
+                }
+                
+            } catch (error) {
+                console.error('音頻分析錯誤:', error);
             }
             
             // Continue monitoring
@@ -543,10 +601,39 @@
             return (totalDifference / (pixels / 4)) / 255 * 100; // Normalize to 0-100
         }
         
+        let lastTriggerTime = 0;
+        
         function triggerAudioDetection(volume) {
+            const now = Date.now();
+            // 防止頻繁觸發（最少間隔1秒）
+            if (now - lastTriggerTime < 1000) return;
+            lastTriggerTime = now;
+            
             const status = document.getElementById('status');
-            status.textContent = `🎵 音頻觸發! (${Math.floor(volume * 0.4)} dB)`;
-            console.log(`🎵 音頻偵測觸發: ${Math.floor(volume * 0.4)} dB`);
+            status.textContent = `🔥 音頻觸發! (${volume} dB)`;
+            console.log(`🔥 音頻偵測觸發: ${volume} dB (闾值: ${detectionSettings.audioThreshold})`);
+            
+            // 視覺特效：狀態欄閣爜
+            status.style.background = 'linear-gradient(45deg, #ff6b6b, #ff4757)';
+            status.style.transform = 'scale(1.05)';
+            status.style.transition = 'all 0.3s ease';
+            
+            // 音效提示（如果支持）
+            if (typeof Audio !== 'undefined') {
+                try {
+                    // 用 Web Audio API 生成簡單提示音
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.frequency.value = 800; // 800Hz 音頻
+                    gainNode.gain.value = 0.1; // 低音量
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.1); // 0.1秒短音
+                } catch (e) {
+                    console.log('無法播放提示音');
+                }
+            }
             
             if (detectionSettings.autoRecording && !recording) {
                 startTriggeredRecording('audio', volume);
@@ -556,6 +643,8 @@
             setTimeout(() => {
                 if (audioDetectionActive) {
                     status.textContent = '👁️🎵 自動偵測中';
+                    status.style.background = '';
+                    status.style.transform = '';
                 }
             }, 3000);
         }
@@ -672,24 +761,26 @@
             audioDetectionActive = true;
             visualDetectionActive = true;
             
-            // Simulate random detections
+            // 提高模擬觸發率以便測試
             const simulateDetection = () => {
                 if (!audioDetectionActive) return;
                 
-                // Random audio detection (10% chance every 5 seconds)
-                if (Math.random() < 0.1) {
-                    const fakeVolume = Math.random() * 40 + 60; // 60-100 range
-                    triggerAudioDetection(fakeVolume);
+                // 提高音頻偵測模擬率（20% 機率每 3 秒）
+                if (Math.random() < 0.2) {
+                    const fakeVolume = Math.random() * 30 + (detectionSettings.audioThreshold + 10); // 超過闾值
+                    console.log(`🤖 模擬音頻觸發: ${fakeVolume.toFixed(1)} dB`);
+                    triggerAudioDetection(Math.floor(fakeVolume));
                 }
                 
-                // Random visual detection (8% chance every 5 seconds)
-                if (Math.random() < 0.08) {
-                    const fakeMotion = Math.random() * 30 + 60; // 60-90 range
+                // 提高視覺偵測模擬率（15% 機率每 3 秒）
+                if (Math.random() < 0.15) {
+                    const fakeMotion = Math.random() * 20 + (detectionSettings.visualSensitivity + 15); // 超過靈敏度
+                    console.log(`🤖 模擬視覺觸發: ${fakeMotion.toFixed(1)}%`);
                     triggerVisualDetection(fakeMotion);
                 }
                 
-                // Continue simulation
-                setTimeout(simulateDetection, 5000);
+                // 縮短模擬間隔到 3 秒
+                setTimeout(simulateDetection, 3000);
             };
             
             simulateDetection();
@@ -1048,7 +1139,7 @@
         function updateAudioThreshold(value) {
             document.getElementById('audioThresholdValue').textContent = `${value} dB`;
             detectionSettings.audioThreshold = parseInt(value);
-            console.log(`🎵 音頻閾值設定為: ${value} dB`);
+            console.log(`🎵 音頻閾值設定為: ${value} dB (實際閾值: ${Math.max(15, value * 0.6)})`);
         }
         
         function updateAudioDuration(value) {
@@ -1290,20 +1381,23 @@
             }
         }
         
+        // 不在偵測時顯示背景音量（避免干擾）
         setInterval(() => {
-            if (!recording) {
+            if (!recording && !audioDetectionActive) {
                 document.getElementById('volume').textContent = `${Math.floor(Math.random() * 20) + 15} dB`;
-                // 更新統計數據
-                const totalCount = parseInt(document.getElementById('totalProcessCount').textContent.replace(/[^0-9]/g, ''));
-                if (totalCount && Math.random() > 0.95) { // 5% 機率更新
-                    document.getElementById('totalProcessCount').textContent = `${totalCount + 1} 次`;
-                }
+            }
+            // 更新統計數據
+            const totalCount = parseInt(document.getElementById('totalProcessCount').textContent.replace(/[^0-9]/g, ''));
+            if (totalCount && Math.random() > 0.95) { // 5% 機率更新
+                document.getElementById('totalProcessCount').textContent = `${totalCount + 1} 次`;
             }
         }, 3000);
         
         console.log('🚀 TCLDCAM 輕量級應用已載入 (512MB RAM最佳化)');
         console.log('✨ 所有UI功能已完整實作');
         console.log('📱 手機版自動偵測功能已啟用');
+        console.log('🎵 聲音偵測高敏感度版本');
+        console.log('🔊 請點擊"開始偵測"並允許麥克風權限來測試功能');
     </script>
 </body>
 </html>
