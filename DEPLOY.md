@@ -1,13 +1,13 @@
 # 🐳 TCLDCAM Docker 部署狀態
 
 ## 最新版本
-**v1.0.14** - 2025-08-07 18:22:00
+**v1.0.17** - 2025-08-08 00:39:00
 
 ## 部署說明
-Fix web compatibility - add AudioRecorderPlayer and RNFS mocks for web platform
+手機版優化: RWD響應式設計, 觸控優化, iOS/Android適配
 
 ## Docker 鏡像
-- `tcldcam:v1.0.14`
+- `tcldcam:v1.0.17`
 - `tcldcam:latest`
 
 ## 部署URL
@@ -21,15 +21,15 @@ Fix web compatibility - add AudioRecorderPlayer and RNFS mocks for web platform
 docker-compose up -d
 
 # 或直接運行
-docker run -p 8080:8080 tcldcam:v1.0.14
+docker run -p 8080:8080 tcldcam:v1.0.17
 ```
 
 ## 版本歷史
-bc5d9ea 🚀 Deploy v1.0.13 - Fix Render timeout with background build and loading page
-802a2b9 🐳 Docker Deploy v1.0.12 - Fix Render build issue - auto-build web app in index.ts if dist missing
-bde7896 🐳 Docker Deploy v1.0.11 - Add missing index.ts and comprehensive README.md for Render compatibility
-ec73e03 🐳 Docker Deploy v1.0.10 - Fix Render auto-detection - remove conflicting entry files and use proper Node.js config
-869dd5b 🐳 Docker Deploy v1.0.9 - Fix Render deployment - use Node.js build instead of Docker, include web build step
+43cbd96 🎵 REAL FILE RECORDING - Add actual audio recording with MediaRecorder API, localStorage file management, playback & delete
+03bdbb9 💾 LOW RESOURCE MODE - 512MB RAM & 0.1 CPU optimized, lightweight web app, skip all builds
+263f285 🚀 INSTANT WEB APP - Add complete static HTML/JS version, skip React Native build entirely
+577b5f7 🔧 Simplify metro config - remove problematic cache module dependency
+4e792ea 🔧 Fix expo export command - use --platform web instead of --dev false
 
 ## 技術棧
 - React Native + Expo
