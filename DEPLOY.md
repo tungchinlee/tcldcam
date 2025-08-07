@@ -1,13 +1,13 @@
 # 🐳 TCLDCAM Docker 部署狀態
 
 ## 最新版本
-**v1.0.10** - 2025-08-07 13:54:28
+**v1.0.11** - 2025-08-07 14:01:21
 
 ## 部署說明
-Fix Render auto-detection - remove conflicting entry files and use proper Node.js config
+Add missing index.ts and comprehensive README.md for Render compatibility
 
 ## Docker 鏡像
-- `tcldcam:v1.0.10`
+- `tcldcam:v1.0.11`
 - `tcldcam:latest`
 
 ## 部署URL
@@ -21,15 +21,15 @@ Fix Render auto-detection - remove conflicting entry files and use proper Node.j
 docker-compose up -d
 
 # 或直接運行
-docker run -p 8080:8080 tcldcam:v1.0.10
+docker run -p 8080:8080 tcldcam:v1.0.11
 ```
 
 ## 版本歷史
+ec73e03 🐳 Docker Deploy v1.0.10 - Fix Render auto-detection - remove conflicting entry files and use proper Node.js config
 869dd5b 🐳 Docker Deploy v1.0.9 - Fix Render deployment - use Node.js build instead of Docker, include web build step
 473e149 🐳 Docker Deploy v1.0.8 - Include server.js in Docker build - remove from dockerignore
 372d10f 🔧 Add postinstall script to generate dist folder
 9753743 🔧 Fix static file path for Render deployment
-e94a2d9 🔧 Create index.ts wrapper for Render compatibility
 
 ## 技術棧
 - React Native + Expo
