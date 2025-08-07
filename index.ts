@@ -21,16 +21,10 @@ if (!fs.existsSync(distPath) || !fs.existsSync(path.join(distPath, 'index.html')
   console.log('🚀 Starting server immediately to avoid timeout...');
   require('./server.js');
   
-  // Build in background with optimized settings
-  const buildProcess = spawn('npx', ['expo', 'export', '--platform', 'web'], {
+  // Build in background using dedicated script
+  const buildProcess = spawn('node', ['build-web.js'], {
     cwd: __dirname,
-    stdio: 'pipe',
-    env: { 
-      ...process.env, 
-      NODE_ENV: 'production',
-      EXPO_NO_CACHE: 'false', // 使用快取
-      EXPO_OPTIMIZE: 'true'    // 啟用最佳化
-    }
+    stdio: 'pipe'
   });
   
   buildProcess.stdout.on('data', (data) => {
