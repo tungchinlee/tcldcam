@@ -16,7 +16,8 @@
     "deploy:patch": "npm run version:patch && npm run build && npm run deploy:push",
     "deploy:minor": "npm run version:minor && npm run build && npm run deploy:push",
     "deploy:major": "npm run version:major && npm run build && npm run deploy:push",
-    "deploy:push": "git add . && git commit -m \"🚀 Deploy v$(node -p \"require('./package.json').version\") - $(date '+%Y-%m-%d %H:%M')\" && git push origin main"
+    "deploy:push": "git add . && git commit -m \"🚀 Deploy v$(node -p \"require('./package.json').version\") - $(date '+%Y-%m-%d %H:%M')\" && git push origin main",
+    "postinstall": "npx expo export -p web"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
