@@ -3,6 +3,120 @@ import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 
+// Web-compatible AudioRecorderPlayer mock
+class WebAudioRecorderPlayer {
+  private mediaRecorder: MediaRecorder | null = null;
+  private recordedChunks: Blob[] = [];
+
+  async startRecorder(filePath: string, config: any): Promise<void> {
+    if (Platform.OS === 'web') {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.mediaRecorder = new MediaRecorder(stream);
+        this.recordedChunks = [];
+
+        this.mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            this.recordedChunks.push(event.data);
+          }
+        };
+
+        this.mediaRecorder.start();
+        console.log('Web audio recording started');
+      } catch (error) {
+        console.error('Failed to start web audio recording:', error);
+        throw error;
+      }
+    }
+  }
+
+  async stopRecorder(): Promise<void> {
+    if (Platform.OS === 'web' && this.mediaRecorder) {
+      return new Promise((resolve) => {
+        this.mediaRecorder!.onstop = () => {
+          // Create blob and save to IndexedDB or localStorage
+          const recordedBlob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+          console.log('Web audio recording stopped, blob size:', recordedBlob.size);
+          resolve();
+        };
+        
+        this.mediaRecorder!.stop();
+        
+        // Stop all tracks
+        this.mediaRecorder!.stream.getTracks().forEach(track => track.stop());
+      });
+    }
+  }
+}
+
+// Web-compatible file system mock
+const WebFS = {
+  exists: async (path: string): Promise<boolean> => {
+    if (Platform.OS === 'web') {
+      // Check localStorage or IndexedDB
+      return localStorage.getItem(path) !== null;
+    }
+    return FileSystem.getInfoAsync(path).then(info => info.exists);
+  },
+  
+  mkdir: async (path: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      // Create directory structure in localStorage
+      localStorage.setItem(path, JSON.stringify({ type: 'directory', created: Date.now() }));
+      return;
+    }
+    return FileSystem.makeDirectoryAsync(path, { intermediates: true });
+  },
+  
+  stat: async (path: string): Promise<{ size: number }> => {
+    if (Platform.OS === 'web') {
+      const data = localStorage.getItem(path);
+      return { size: data ? data.length : 0 };
+    }
+    const info = await FileSystem.getInfoAsync(path);
+    return { size: info.size || 0 };
+  },
+  
+  unlink: async (path: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(path);
+      return;
+    }
+    return FileSystem.deleteAsync(path);
+  },
+  
+  readDir: async (path: string): Promise<any[]> => {
+    if (Platform.OS === 'web') {
+      // Return mock file list
+      return [];
+    }
+    const info = await FileSystem.readDirectoryAsync(path);
+    return info.map(name => ({
+      name,
+      isFile: () => !name.includes('.'),
+      path: `${path}/${name}`,
+      size: 0,
+      mtime: Date.now()
+    }));
+  },
+  
+  DocumentDirectoryPath: Platform.OS === 'web' ? '/web-documents' : FileSystem.documentDirectory,
+  ExternalDirectoryPath: Platform.OS === 'web' ? '/web-external' : FileSystem.documentDirectory,
+};
+
+// Create AudioRecorderPlayer instance
+const AudioRecorderPlayer = Platform.OS === 'web' ? WebAudioRecorderPlayer : class MockAudioRecorderPlayer {
+  async startRecorder(filePath: string, config: any): Promise<void> {
+    console.log('MockAudioRecorderPlayer startRecorder called');
+  }
+  
+  async stopRecorder(): Promise<void> {
+    console.log('MockAudioRecorderPlayer stopRecorder called');
+  }
+};
+
+const RNFS = WebFS;
+
 export interface RecordingConfig {
   duration: number; // 錄製時長(秒)
   audioQuality: 'low' | 'medium' | 'high';
