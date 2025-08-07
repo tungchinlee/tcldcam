@@ -173,40 +173,212 @@
     </div>
     
     <script>
-        let recording = false, time = 0, interval;
+        let recording = false, time = 0, interval, mediaRecorder, recordedChunks = [], stream;
+        let recordingFiles = JSON.parse(localStorage.getItem('tcldcam_files') || '[]');
         
         function show(tab) {
             document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById(tab).classList.remove('hidden');
             event.target.classList.add('active');
+            
+            if (tab === 'files') {
+                updateFilesList();
+            }
         }
         
-        function toggle() {
+        async function toggle() {
             const btn = document.getElementById('recordBtn');
             const status = document.getElementById('status');
             
             if (!recording) {
-                recording = true;
-                btn.textContent = '⏹️ 停止';
-                btn.classList.add('active');
-                status.textContent = '🔴 錄製中';
-                time = 0;
-                interval = setInterval(updateDisplay, 1000);
-                
-                navigator.mediaDevices?.getUserMedia({ audio: true })
-                    .then(() => console.log('✅ 音頻權限獲取'))
-                    .catch(() => console.log('⚠️ 使用模擬模式'));
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    recordedChunks = [];
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        saveRecording();
+                    };
+                    
+                    mediaRecorder.start();
+                    recording = true;
+                    btn.textContent = '⏹️ 停止錄製';
+                    btn.classList.add('active');
+                    status.textContent = '🔴 錄製中';
+                    time = 0;
+                    interval = setInterval(updateDisplay, 1000);
+                    
+                    console.log('✅ 開始錄音');
+                } catch (error) {
+                    console.log('⚠️ 權限被拒絕，使用模擬模式');
+                    startSimulation();
+                }
             } else {
-                recording = false;
-                btn.textContent = '🎤 開始偵測';
-                btn.classList.remove('active');
-                status.textContent = '⏹️ 已停止';
-                clearInterval(interval);
-                setTimeout(() => {
-                    status.textContent = '待機中';
-                    document.getElementById('time').textContent = '00:00';
-                }, 3000);
+                stopRecording();
+            }
+        }
+        
+        function startSimulation() {
+            recording = true;
+            const btn = document.getElementById('recordBtn');
+            const status = document.getElementById('status');
+            btn.textContent = '⏹️ 停止錄製';
+            btn.classList.add('active');
+            status.textContent = '🔴 錄製中 (模擬)';
+            time = 0;
+            interval = setInterval(updateDisplay, 1000);
+        }
+        
+        function stopRecording() {
+            recording = false;
+            const btn = document.getElementById('recordBtn');
+            const status = document.getElementById('status');
+            
+            btn.textContent = '🎤 開始偵測';
+            btn.classList.remove('active');
+            status.textContent = '💾 保存中...';
+            clearInterval(interval);
+            
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                stream?.getTracks().forEach(track => track.stop());
+            } else {
+                // 模擬模式保存
+                saveSimulatedRecording();
+            }
+            
+            setTimeout(() => {
+                status.textContent = '待機中';
+                document.getElementById('time').textContent = '00:00';
+            }, 2000);
+        }
+        
+        function saveRecording() {
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const fileName = `錄音_${timestamp.substring(0,19)}.webm`;
+            
+            // 轉換為base64保存到localStorage
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const fileData = {
+                    id: Date.now(),
+                    name: fileName,
+                    type: 'audio',
+                    duration: time,
+                    size: blob.size,
+                    data: reader.result,
+                    timestamp: new Date().toLocaleString('zh-TW'),
+                    triggerType: '手動錄製'
+                };
+                
+                recordingFiles.unshift(fileData);
+                // 限制最多保存10個檔案
+                if (recordingFiles.length > 10) {
+                    recordingFiles = recordingFiles.slice(0, 10);
+                }
+                
+                localStorage.setItem('tcldcam_files', JSON.stringify(recordingFiles));
+                console.log(`✅ 保存錄音: ${fileName} (${blob.size} bytes)`);
+            };
+            reader.readAsDataURL(blob);
+        }
+        
+        function saveSimulatedRecording() {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const fileName = `模擬錄音_${timestamp.substring(0,19)}.webm`;
+            
+            const fileData = {
+                id: Date.now(),
+                name: fileName,
+                type: 'audio',
+                duration: time,
+                size: Math.floor(Math.random() * 500000) + 100000, // 模擬檔案大小
+                data: 'data:audio/webm;base64,simulated', // 模擬數據
+                timestamp: new Date().toLocaleString('zh-TW'),
+                triggerType: '模擬錄製'
+            };
+            
+            recordingFiles.unshift(fileData);
+            if (recordingFiles.length > 10) {
+                recordingFiles = recordingFiles.slice(0, 10);
+            }
+            
+            localStorage.setItem('tcldcam_files', JSON.stringify(recordingFiles));
+            console.log(`✅ 保存模擬錄音: ${fileName}`);
+        }
+        
+        function updateFilesList() {
+            const filesGrid = document.querySelector('#files .grid');
+            if (!filesGrid) return;
+            
+            if (recordingFiles.length === 0) {
+                filesGrid.innerHTML = '<div class="card"><span class="icon">📭</span><h4>暫無錄製檔案</h4><p>開始錄製後檔案將顯示在這裡</p></div>';
+                return;
+            }
+            
+            filesGrid.innerHTML = recordingFiles.map(file => `
+                <div class="card">
+                    <span class="icon">${file.type === 'audio' ? '🎵' : '📹'}</span>
+                    <h4>${file.name}</h4>
+                    <p>${formatDuration(file.duration)} | ${formatFileSize(file.size)}</p>
+                    <p style="font-size: 0.8em; opacity: 0.8;">${file.timestamp}</p>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px;" onclick="playFile(${file.id})">▶️ 播放</button>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px; background: #ff4757;" onclick="deleteFile(${file.id})">🗑️ 刪除</button>
+                </div>
+            `).join('');
+            
+            // 更新統計
+            const totalSize = recordingFiles.reduce((sum, file) => sum + file.size, 0);
+            document.querySelector('#files .status').innerHTML = `
+                <div class="row"><span>📊 檔案數:</span><span>${recordingFiles.length} 個</span></div>
+                <div class="row"><span>💾 空間:</span><span>${formatFileSize(totalSize)} / 2 GB</span></div>
+            `;
+        }
+        
+        function formatDuration(seconds) {
+            const min = Math.floor(seconds / 60);
+            const sec = seconds % 60;
+            return `${min}:${sec.toString().padStart(2, '0')}`;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        function playFile(id) {
+            const file = recordingFiles.find(f => f.id === id);
+            if (!file) return;
+            
+            if (file.data === 'data:audio/webm;base64,simulated') {
+                alert('這是模擬檔案，無法播放。請允許麥克風權限以錄製真實音頻。');
+                return;
+            }
+            
+            const audio = new Audio(file.data);
+            audio.play().then(() => {
+                console.log(`▶️ 播放: ${file.name}`);
+            }).catch(error => {
+                console.error('播放失敗:', error);
+                alert('播放失敗，檔案可能已損壞');
+            });
+        }
+        
+        function deleteFile(id) {
+            if (confirm('確定要刪除這個檔案嗎？')) {
+                recordingFiles = recordingFiles.filter(f => f.id !== id);
+                localStorage.setItem('tcldcam_files', JSON.stringify(recordingFiles));
+                updateFilesList();
+                console.log('🗑️ 檔案已刪除');
             }
         }
         
