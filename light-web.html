@@ -141,7 +141,7 @@
         <div id="home" class="content">
             <h2 style="text-align: center; margin-bottom: 20px;">🎯 偵測控制</h2>
             <div style="text-align: center;">
-                <button id="recordBtn" class="btn" onclick="toggle()">🎤 開始偵測</button>
+                <button id="recordBtn" class="btn" onclick="toggle()">🎬 開始錄影偵測</button>
             </div>
             
             <div class="status">
@@ -232,8 +232,13 @@
                 
                 <div class="row">
                     <span>同時錄音錄影:</span>
-                    <input type="checkbox" id="recordBoth" onchange="updateRecordBoth(this.checked)">
-                    <span id="recordBothStatus">❌ 關閉</span>
+                    <input type="checkbox" id="recordBoth" checked onchange="updateRecordBoth(this.checked)">
+                    <span id="recordBothStatus">✅ 啟用</span>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #ffa500;">📹 錄影功能說明</h4>
+                    <p style="font-size: 0.9em; line-height: 1.4; margin: 0;">• 啟用後偵測到聲音時會同時錄製視頻和音頻<br>• 錄影解析度: 1280x720 @ 30fps<br>• 需要額外的攝影機權限<br>• 檔案大小會比純音頻大很多</p>
                 </div>
                 
                 <div style="text-align: center; margin-top: 20px;">
