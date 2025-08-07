@@ -14,37 +14,8 @@ console.log('🎯 Port:', process.env.PORT);
 const distPath = path.join(__dirname, 'dist');
 console.log('🔍 Checking dist folder at:', distPath);
 
-if (!fs.existsSync(distPath) || !fs.existsSync(path.join(distPath, 'index.html'))) {
-  console.log('📦 Building web application in background...');
-  
-  // Start server first to avoid timeout
-  console.log('🚀 Starting server immediately to avoid timeout...');
-  require('./server.js');
-  
-  // Build in background using dedicated script
-  const buildProcess = spawn('node', ['build-web.js'], {
-    cwd: __dirname,
-    stdio: 'pipe'
-  });
-  
-  buildProcess.stdout.on('data', (data) => {
-    console.log(`Build: ${data}`);
-  });
-  
-  buildProcess.stderr.on('data', (data) => {
-    console.error(`Build Error: ${data}`);
-  });
-  
-  buildProcess.on('close', (code) => {
-    if (code === 0) {
-      console.log('✅ Web build completed successfully');
-    } else {
-      console.error('❌ Build failed with code:', code);
-    }
-  });
-  
-} else {
-  console.log('✅ Dist folder already exists');
-  console.log('📦 Loading Express server...');
-  require('./server.js');
-}
+// 低資源模式 - 跳過React Native建構以節省RAM和CPU
+console.log('💾 低資源模式啟動 (512MB RAM, 0.1 CPU)');
+console.log('⚡ 使用即時靜態Web應用，跳過建構過程');
+console.log('📦 Loading Express server...');
+require('./server.js');

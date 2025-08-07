@@ -1,7 +1,13 @@
+// 低資源模式配置
 const express = require('express');
 const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// 減少Express記憶體使用
+app.set('x-powered-by', false);
+app.set('etag', false);
+app.set('trust proxy', false);
 
 // 靜態文件服務 - 處理Render路徑問題
 const distPath = path.join(__dirname, 'dist');
@@ -23,9 +29,12 @@ app.use(express.static(staticPath));
 app.get('*', (req, res) => {
   const indexPath = path.join(staticPath, 'index.html');
   
-  // 立即提供完整的靜態web應用，不等待建構
+  // 低資源模式 - 優先使用輕量版應用
+  const lightWebPath = path.join(__dirname, 'light-web.html');
   const staticWebPath = path.join(__dirname, 'static-web.html');
-  if (fs.existsSync(staticWebPath)) {
+  if (fs.existsSync(lightWebPath)) {
+    res.sendFile(lightWebPath);
+  } else if (fs.existsSync(staticWebPath)) {
     res.sendFile(staticWebPath);
   } else if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);

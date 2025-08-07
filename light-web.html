@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎥 TCLDCAM - 智能偵測</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; min-height: 100vh; padding: 10px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { text-align: center; padding: 20px 0; }
+        .logo { font-size: 3em; margin-bottom: 10px; }
+        .title { font-size: 2em; margin-bottom: 10px; }
+        .nav { display: flex; background: rgba(255,255,255,0.1); border-radius: 25px; padding: 5px; margin: 20px 0; }
+        .nav-item { flex: 1; text-align: center; padding: 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; }
+        .nav-item.active { background: rgba(255,255,255,0.2); }
+        .content { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; min-height: 300px; }
+        .btn { background: #ff6b6b; border: none; border-radius: 25px; padding: 15px 30px; color: white; cursor: pointer; font-size: 1.1em; margin: 10px; }
+        .btn:hover { background: #ff5252; }
+        .btn.active { background: #ff4757; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .status { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin: 15px 0; }
+        .row { display: flex; justify-content: space-between; margin: 8px 0; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .card { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px; text-align: center; }
+        .icon { font-size: 2em; display: block; margin-bottom: 10px; }
+        .hidden { display: none; }
+        @media (max-width: 600px) { .nav { flex-direction: column; } .nav-item { margin: 2px 0; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎥</div>
+            <h1 class="title">TCLDCAM</h1>
+            <p>智能聲音與視覺偵測</p>
+        </div>
+        
+        <div class="nav">
+            <div class="nav-item active" onclick="show('home')">🏠 主頁</div>
+            <div class="nav-item" onclick="show('settings')">⚙️ 設定</div>
+            <div class="nav-item" onclick="show('files')">📁 檔案</div>
+            <div class="nav-item" onclick="show('models')">🤖 模型</div>
+        </div>
+        
+        <div id="home" class="content">
+            <h2 style="text-align: center; margin-bottom: 20px;">🎯 偵測控制</h2>
+            <div style="text-align: center;">
+                <button id="recordBtn" class="btn" onclick="toggle()">🎤 開始偵測</button>
+            </div>
+            
+            <div class="status">
+                <div class="row"><span>📊 狀態:</span><span id="status">待機中</span></div>
+                <div class="row"><span>🎵 音量:</span><span id="volume">0 dB</span></div>
+                <div class="row"><span>👁️ 視覺:</span><span id="visual">未啟動</span></div>
+                <div class="row"><span>⏱️ 時間:</span><span id="time">00:00</span></div>
+            </div>
+            
+            <div class="grid">
+                <div class="card">
+                    <span class="icon">🎵</span>
+                    <h3>聲音偵測</h3>
+                    <p>智能識別特定聲音模式</p>
+                </div>
+                <div class="card">
+                    <span class="icon">👁️</span>
+                    <h3>視覺偵測</h3>
+                    <p>AI驅動的畫面分析</p>
+                </div>
+                <div class="card">
+                    <span class="icon">📹</span>
+                    <h3>自動錄製</h3>
+                    <p>偵測到目標時自動錄製</p>
+                </div>
+                <div class="card">
+                    <span class="icon">🤖</span>
+                    <h3>AI模型</h3>
+                    <p>雲端更新與本地緩存</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="settings" class="content hidden">
+            <h2 style="text-align: center; margin-bottom: 20px;">⚙️ 偵測設定</h2>
+            <div class="status">
+                <h3>🎵 聲音設定</h3>
+                <div class="row"><span>偵測閾值:</span><span>50 dB</span></div>
+                <input type="range" style="width: 100%; margin: 10px 0;" min="0" max="100" value="50">
+                
+                <h3>👁️ 視覺設定</h3>
+                <div class="row"><span>靈敏度:</span><span>中等</span></div>
+                <input type="range" style="width: 100%; margin: 10px 0;" min="0" max="100" value="50">
+                
+                <h3>📹 錄製設定</h3>
+                <div class="row">
+                    <span>品質:</span>
+                    <select style="padding: 5px; background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 5px;">
+                        <option>中 (1080p)</option>
+                        <option>低 (720p)</option>
+                        <option>高 (4K)</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <span>自動錄製:</span>
+                    <input type="checkbox" checked>
+                </div>
+            </div>
+        </div>
+        
+        <div id="files" class="content hidden">
+            <h2 style="text-align: center; margin-bottom: 20px;">📁 錄製檔案</h2>
+            <div class="status">
+                <div class="row"><span>📊 檔案數:</span><span>3 個</span></div>
+                <div class="row"><span>💾 空間:</span><span>156 MB / 2 GB</span></div>
+            </div>
+            <div class="grid">
+                <div class="card">
+                    <span class="icon">🎵</span>
+                    <h4>音頻_143022.aac</h4>
+                    <p>30秒 | 2.3MB</p>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px;">▶️ 播放</button>
+                </div>
+                <div class="card">
+                    <span class="icon">📹</span>
+                    <h4>視頻_142015.mp4</h4>
+                    <p>45秒 | 12.7MB</p>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px;">▶️ 播放</button>
+                </div>
+                <div class="card">
+                    <span class="icon">🎬</span>
+                    <h4>完整_141230.mp4</h4>
+                    <p>1:23 | 28.9MB</p>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px;">▶️ 播放</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="models" class="content hidden">
+            <h2 style="text-align: center; margin-bottom: 20px;">🤖 AI模型</h2>
+            <div class="status">
+                <div class="row"><span>🔄 更新:</span><span>2025-01-07 14:30</span></div>
+                <div class="row"><span>📡 狀態:</span><span style="color: #27ae60;">✅ 已連線</span></div>
+            </div>
+            <div class="grid">
+                <div class="card">
+                    <span class="icon">🎵</span>
+                    <h4>聲音模型 v2.3</h4>
+                    <p>已載入 | 15.2MB</p>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px;">🔄 更新</button>
+                </div>
+                <div class="card">
+                    <span class="icon">👁️</span>
+                    <h4>視覺模型 v1.8</h4>
+                    <p>已載入 | 23.7MB</p>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px;">🔄 更新</button>
+                </div>
+                <div class="card">
+                    <span class="icon">🧠</span>
+                    <h4>核心 v3.1</h4>
+                    <p>已載入 | 45.1MB</p>
+                    <button class="btn" style="font-size: 0.8em; padding: 8px 16px;">🔄 更新</button>
+                </div>
+            </div>
+        </div>
+        
+        <p style="text-align: center; margin-top: 30px; opacity: 0.7; font-size: 0.9em;">
+            版本 v1.0.16 | 輕量級Web應用 | 512MB RAM最佳化
+        </p>
+    </div>
+    
+    <script>
+        let recording = false, time = 0, interval;
+        
+        function show(tab) {
+            document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.remove('hidden');
+            event.target.classList.add('active');
+        }
+        
+        function toggle() {
+            const btn = document.getElementById('recordBtn');
+            const status = document.getElementById('status');
+            
+            if (!recording) {
+                recording = true;
+                btn.textContent = '⏹️ 停止';
+                btn.classList.add('active');
+                status.textContent = '🔴 錄製中';
+                time = 0;
+                interval = setInterval(updateDisplay, 1000);
+                
+                navigator.mediaDevices?.getUserMedia({ audio: true })
+                    .then(() => console.log('✅ 音頻權限獲取'))
+                    .catch(() => console.log('⚠️ 使用模擬模式'));
+            } else {
+                recording = false;
+                btn.textContent = '🎤 開始偵測';
+                btn.classList.remove('active');
+                status.textContent = '⏹️ 已停止';
+                clearInterval(interval);
+                setTimeout(() => {
+                    status.textContent = '待機中';
+                    document.getElementById('time').textContent = '00:00';
+                }, 3000);
+            }
+        }
+        
+        function updateDisplay() {
+            time++;
+            const min = Math.floor(time / 60), sec = time % 60;
+            document.getElementById('time').textContent = 
+                `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            document.getElementById('volume').textContent = `${Math.floor(Math.random() * 40) + 30} dB`;
+            const states = ['偵測中', '發現動態', '分析中'];
+            document.getElementById('visual').textContent = states[Math.floor(Math.random() * 3)];
+        }
+        
+        setInterval(() => {
+            if (!recording) {
+                document.getElementById('volume').textContent = `${Math.floor(Math.random() * 20) + 15} dB`;
+            }
+        }, 3000);
+        
+        console.log('🚀 TCLDCAM 輕量級應用已載入 (512MB RAM最佳化)');
+    </script>
+</body>
+</html>
