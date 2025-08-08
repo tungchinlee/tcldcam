@@ -194,7 +194,7 @@
                 <input type="range" id="audioDurationSlider" style="width: 100%; margin: 10px 0;" min="1" max="10" value="2" oninput="updateAudioDuration(this.value)">
                 
                 <div class="row">
-                    <span>自動觸發:</span>
+                    <span>自動觸發錄製:</span>
                     <input type="checkbox" id="audioAutoTrigger" checked onchange="updateAudioAutoTrigger(this.checked)">
                     <span id="audioAutoStatus">✅ 啟用</span>
                 </div>
@@ -266,7 +266,7 @@
         </div>
         
         <p style="text-align: center; margin-top: 30px; opacity: 0.7; font-size: 0.9em;">
-            版本 v1.1.2 | 修復音頻偵測與錄製問題 | 512MB RAM最佳化
+            版本 v1.1.3 | 修復自動觸發錄製邏輯 | 512MB RAM最佳化
         </p>
     </div>
     
@@ -471,7 +471,9 @@
                 
                 // Debug info - 詳細記錄
                 if (displayVolumeDb > 5) { // 只在有聲音時記錄
-                    console.log(`🎵 校正音頻: RMS=${(rms * 1000).toFixed(3)}, 校正dB=${displayVolumeDb}, 閾值=${detectionSettings.audioThreshold}dB ${thresholdMet ? '🔥觸發!' : ''}`);
+                    const triggerStatus = thresholdMet ? '🔥觸發!' : '⭕未達閾值';
+                    const autoTriggerStatus = detectionSettings.audioAutoTrigger ? '✅已啟用' : '❌已關閉';
+                    console.log(`🎵 音頻分析: RMS=${(rms * 1000).toFixed(3)}, dB=${displayVolumeDb}, 閾值=${detectionSettings.audioThreshold}dB ${triggerStatus}, 自動錄製:${autoTriggerStatus}`);
                 }
                 
                 // Check if volume exceeds threshold
@@ -524,7 +526,7 @@
             }
             
             // 強制觸發錄音，確保自動錄製功能正常
-            if (detectionSettings.autoRecording) {
+            if (detectionSettings.audioAutoTrigger) {
                 if (recording) {
                     console.log(`⚠️ 已在錄製中，重設計時器 (觸發值: ${volume}dB)`);
                     // 重設錄製計時器，延長錄製時間
@@ -545,7 +547,7 @@
                     }, 100); // 短暫延遲確保觸發邏輯執行
                 }
             } else {
-                console.log('⚠️ 自動錄製功能已關閉，僅提示觸發');
+                console.log('⚠️ 自動觸發功能已關閉，僅提示偵測到聲音');
             }
             
             // Reset status after 3 seconds
@@ -589,7 +591,13 @@
         function updateAudioAutoTrigger(checked) {
             document.getElementById('audioAutoStatus').textContent = checked ? '✅ 啟用' : '❌ 關閉';
             detectionSettings.audioAutoTrigger = checked;
-            console.log(`🔄 音頻自動觸發: ${checked ? '啟用' : '關閉'}`);
+            console.log(`🔄 音頻自動觸發錄製: ${checked ? '啟用' : '關閉'}`);
+            
+            if (!checked) {
+                console.log('⚠️ 自動觸發錄製已關閉，偵測到聲音時只會顯示提示，不會自動開始錄製');
+            } else {
+                console.log('✅ 自動觸發錄製已啟用，偵測到聲音時會自動開始錄製');
+            }
         }
         
         function updateRecordBoth(checked) {
@@ -1352,7 +1360,7 @@
             console.log('📱 手機版適配初始化完成');
         });
         
-        console.log('🚀 TCLDCAM v1.1.2 - 音頻偵測與錄製修復版本');
+        console.log('🚀 TCLDCAM v1.1.3 - 自動觸發錄製邏輯修復版本');
         console.log('✨ 功能列表:');
         console.log('   🎵 真實 dB 音量測量 (RMS + 對數轉換)');
         console.log('   🎯 精確閾值控制 (10-60 dB 範圍)');

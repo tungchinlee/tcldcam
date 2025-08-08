@@ -1,13 +1,13 @@
 # 🐳 TCLDCAM Docker 部署狀態
 
 ## 最新版本
-**v1.1.2** - 2025-08-08 11:45:20
+**v1.1.3** - 2025-08-08 12:33:11
 
 ## 部署說明
 Docker deployment
 
 ## Docker 鏡像
-- `tcldcam:v1.1.2`
+- `tcldcam:v1.1.3`
 - `tcldcam:latest`
 
 ## 部署URL
@@ -21,15 +21,15 @@ Docker deployment
 docker-compose up -d
 
 # 或直接運行
-docker run -p 8080:8080 tcldcam:v1.1.2
+docker run -p 8080:8080 tcldcam:v1.1.3
 ```
 
 ## 版本歷史
+a4da3d5 🐳 Docker Deploy v1.1.2 - Docker deployment
 6c7b2aa 🐳 Docker Deploy v1.1.1 - 修復音頻偵測精確度: RMS時域分析, 真實dB轉換, 30dB預設閾值, 實時除錯顯示
 8075a8f 🐳 Docker Deploy v1.1.0 - 聲音觸發錄影功能: 完整視頻錄製, 預覽窗口, 檔案管理, 播放/下載功能
 7050908 🐳 Docker Deploy v1.0.18 - 修復聲音偵測: 提高敏感度, 降低閾值, 增加除錯資訊, 優化觸發邏輯
 03cc803 🐳 Docker Deploy v1.0.17 - 手機版優化: RWD響應式設計, 觸控優化, iOS/Android適配
-43cbd96 🎵 REAL FILE RECORDING - Add actual audio recording with MediaRecorder API, localStorage file management, playback & delete
 
 ## 技術棧
 - React Native + Expo
