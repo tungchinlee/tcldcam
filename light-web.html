@@ -207,8 +207,8 @@
                 </div>
                 
                 <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin: 15px 0;">
-                    <h4 style="margin: 0 0 10px 0; color: #ffa500;">📹 錄影功能說明</h4>
-                    <p style="font-size: 0.9em; line-height: 1.4; margin: 0;">• 啟用後偵測到聲音時會同時錄製視頻和音頻<br>• 錄影解析度: 1280x720 @ 30fps<br>• 需要額外的攝影機權限<br>• 檔案大小會比純音頻大很多</p>
+                    <h4 style="margin: 0 0 10px 0; color: #ffa500;" id="recordingModeTitle">📹 錄影功能說明</h4>
+                    <p style="font-size: 0.9em; line-height: 1.4; margin: 0;" id="recordingModeDesc">• 啟用後偵測到聲音時會同時錄製視頻和音頻<br>• 錄影解析度: 1280x720 @ 30fps<br>• 需要額外的攝影機權限<br>• 檔案大小會比純音頻大很多</p>
                 </div>
                 
                 <div style="text-align: center; margin-top: 20px;">
@@ -266,12 +266,13 @@
         </div>
         
         <p style="text-align: center; margin-top: 30px; opacity: 0.7; font-size: 0.9em;">
-            版本 v1.1.1 | 高精度音頻偵測版本 | 512MB RAM最佳化
+            版本 v1.1.2 | 修復音頻偵測與錄製問題 | 512MB RAM最佳化
         </p>
     </div>
     
     <script>
         let recording = false, time = 0, interval, mediaRecorder, recordedChunks = [], stream;
+        let autoStopTimeout; // 自動停止錄製的計時器
         let recordingFiles = JSON.parse(localStorage.getItem('tcldcam_files') || '[]');
         
         // 精確的音頻偵測變量
@@ -325,11 +326,23 @@
                 }
             } else {
                 // Stop auto detection
-                stopAutoDetection();
-                btn.textContent = '🎬 開始錄影偵測';
-                btn.classList.remove('active');
-                status.textContent = '待機中';
-                console.log('⏹️ 自動偵測已停止');
+                if (recording) {
+                    // 如果正在錄製，提供手動停止選項
+                    if (confirm('目前正在錄製中，確定要停止偵測和錄製嗎？')) {
+                        stopTriggeredRecording(); // 先停止錄製
+                        stopAutoDetection(); // 再停止偵測
+                        btn.textContent = detectionSettings.recordBoth ? '🎬 開始錄影偵測' : '🎤 開始錄音偵測';
+                        btn.classList.remove('active');
+                        status.textContent = '手動停止';
+                        console.log('✋ 用戶手動停止偵測和錄製');
+                    }
+                } else {
+                    stopAutoDetection();
+                    btn.textContent = detectionSettings.recordBoth ? '🎬 開始錄影偵測' : '🎤 開始錄音偵測';
+                    btn.classList.remove('active');
+                    status.textContent = '待機中';
+                    console.log('⏹️ 自動偵測已停止');
+                }
             }
         }
         
@@ -433,26 +446,36 @@
                 }
                 const rms = Math.sqrt(sum / dataArray.length);
                 
-                // 轉換為 dB (對數刻度)
-                const volumeDb = rms > 0 ? Math.max(-60, 20 * Math.log10(rms)) : -60;
-                const displayVolumeDb = Math.max(0, Math.floor(volumeDb + 60)); // 0-60 dB 顯示範圍
+                // 校正的 dB 轉換 - 使用更準確的音頻測量
+                // 將 RMS 值映射到合理的 dB 範圍 (0-100 dB)
+                let calibratedDb;
+                if (rms > 0.001) {
+                    // 對於有聲音的情況，使用對數轉換並校正到實際範圍
+                    const rawDb = 20 * Math.log10(rms);
+                    // 映射 -60dB 到 +20dB 範圍到 0-80 顯示範圍
+                    calibratedDb = Math.max(0, Math.min(100, rawDb + 80));
+                } else {
+                    calibratedDb = 0; // 無聲音時顯示 0
+                }
+                
+                const displayVolumeDb = Math.floor(calibratedDb);
                 
                 // Update volume display
                 document.getElementById('volume').textContent = `${displayVolumeDb} dB`;
                 
-                // 使用閾值設定，轉換為 RMS 範圍進行比較
-                const thresholdRms = Math.pow(10, (detectionSettings.audioThreshold - 60) / 20);
+                // 直接使用顯示的 dB 值進行閾值比較
+                const thresholdMet = displayVolumeDb >= detectionSettings.audioThreshold;
                 
-                // 實時除錯資訊
-                document.getElementById('debug').textContent = `RMS:${(rms * 100).toFixed(1)}% 閾值:${detectionSettings.audioThreshold}dB`;
+                // 實時除錯資訊 - 顯示更清楚的數據
+                document.getElementById('debug').textContent = `RMS:${(rms * 1000).toFixed(2)} 當前:${displayVolumeDb}dB 閾值:${detectionSettings.audioThreshold}dB ${thresholdMet ? '🔥' : '⭕'}`;
                 
-                // Debug info - 顯示更詳細的資訊
-                if (rms > 0.01) { // 只在有明顯聲音時記錄
-                    console.log(`🎵 音頻分析: RMS=${(rms * 100).toFixed(2)}%, dB=${volumeDb.toFixed(1)}, 顯示=${displayVolumeDb}dB, 閾值=${detectionSettings.audioThreshold}dB ${rms > thresholdRms ? '🔥觸發!' : ''}`);
+                // Debug info - 詳細記錄
+                if (displayVolumeDb > 5) { // 只在有聲音時記錄
+                    console.log(`🎵 校正音頻: RMS=${(rms * 1000).toFixed(3)}, 校正dB=${displayVolumeDb}, 閾值=${detectionSettings.audioThreshold}dB ${thresholdMet ? '🔥觸發!' : ''}`);
                 }
                 
                 // Check if volume exceeds threshold
-                if (rms > thresholdRms) {
+                if (thresholdMet) {
                     triggerAudioDetection(displayVolumeDb);
                 }
                 
@@ -500,8 +523,29 @@
                 }
             }
             
-            if (detectionSettings.autoRecording && !recording) {
-                startTriggeredRecording('audio', volume);
+            // 強制觸發錄音，確保自動錄製功能正常
+            if (detectionSettings.autoRecording) {
+                if (recording) {
+                    console.log(`⚠️ 已在錄製中，重設計時器 (觸發值: ${volume}dB)`);
+                    // 重設錄製計時器，延長錄製時間
+                    if (autoStopTimeout) {
+                        clearTimeout(autoStopTimeout);
+                    }
+                    autoStopTimeout = setTimeout(() => {
+                        if (recording) {
+                            console.log('⏰ 延長錄製時間結束，自動停止');
+                            stopTriggeredRecording();
+                        }
+                    }, detectionSettings.audioDuration * 1000);
+                } else {
+                    console.log(`🚀 音頻觸發自動錄製 (${volume}dB >= ${detectionSettings.audioThreshold}dB)`);
+                    // 確保立即觸發錄製
+                    setTimeout(() => {
+                        startTriggeredRecording('audio', volume);
+                    }, 100); // 短暫延遲確保觸發邏輯執行
+                }
+            } else {
+                console.log('⚠️ 自動錄製功能已關閉，僅提示觸發');
             }
             
             // Reset status after 3 seconds
@@ -534,7 +578,12 @@
         function updateAudioDuration(value) {
             document.getElementById('audioDurationValue').textContent = `${value} 秒`;
             detectionSettings.audioDuration = parseInt(value);
-            console.log(`⏱️ 音頻持續時間設定為: ${value} 秒`);
+            
+            if (detectionSettings.recordBoth) {
+                console.log(`⏱️ 錄影持續時間設定為: ${value} 秒`);
+            } else {
+                console.log(`⏱️ 錄音持續時間設定為: ${value} 秒 (僅錄音模式，可手動停止)`);
+            }
         }
         
         function updateAudioAutoTrigger(checked) {
@@ -552,6 +601,18 @@
             const recordBtn = document.getElementById('recordBtn');
             if (recordBtn && !audioDetectionActive) {
                 recordBtn.innerHTML = checked ? '🎬 開始錄影偵測' : '🎤 開始錄音偵測';
+            }
+            
+            // 動態更新功能說明
+            const titleElement = document.getElementById('recordingModeTitle');
+            const descElement = document.getElementById('recordingModeDesc');
+            
+            if (checked) {
+                titleElement.textContent = '📹 錄影功能說明';
+                descElement.innerHTML = '• 啟用後偵測到聲音時會同時錄製視頻和音頻<br>• 錄影解析度: 1280x720 @ 30fps<br>• 需要額外的攝影機權限<br>• 檔案大小會比純音頻大很多<br>• 自動停止時間由"持續時間"設定決定';
+            } else {
+                titleElement.textContent = '🎤 純錄音功能說明';
+                descElement.innerHTML = '• 關閉錄影後，僅錄製音頻<br>• 文件較小，節省儲存空間<br>• 不需攝影機權限<br>• <strong>錄音將持續進行直到手動停止或達到最長時間</strong><br>• 可透過"停止偵測"按鈕手動中斷錄製';
             }
         }
         
@@ -676,17 +737,25 @@
                 if (detectionSettings.recordBoth) {
                     // 錄影 + 錄音
                     console.log('🎬 請求錄影權限...');
-                    recordingStream = await navigator.mediaDevices.getUserMedia({ 
-                        audio: true, 
-                        video: {
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 },
-                            frameRate: { ideal: 30 }
-                        }
-                    });
-                    console.log('✅ 錄影權限獲取成功');
+                    try {
+                        recordingStream = await navigator.mediaDevices.getUserMedia({ 
+                            audio: true, 
+                            video: {
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 },
+                                frameRate: { ideal: 30 }
+                            }
+                        });
+                        console.log('✅ 錄影權限獲取成功');
+                    } catch (videoError) {
+                        console.log('⚠️ 錄影權限失敗，降級為僅錄音');
+                        recordingStream = stream || await navigator.mediaDevices.getUserMedia({ audio: true });
+                        // 臨時關閉錄影模式
+                        detectionSettings.recordBoth = false;
+                    }
                 } else {
-                    // 僅錄音
+                    // 僅錄音 - 持續錄製直到手動停止或達到最大時長
+                    console.log('🎤 僅錄音模式 - 持續錄製');
                     recordingStream = stream || await navigator.mediaDevices.getUserMedia({ audio: true });
                 }
                 
@@ -727,14 +796,17 @@
                 
                 console.log(`✅ 自動錄製開始 (觸發: ${triggerType}, 模式: ${detectionSettings.recordBoth ? '錄影+錄音' : '僅錄音'})`);
                 
-                // 如果是錄影，顯示預覽（可選）
+                // 如果是錄影，顯示預覽；如果僅錄音，顯示錄音指示
                 if (detectionSettings.recordBoth) {
                     showVideoPreview(recordingStream);
+                } else {
+                    showAudioRecordingIndicator();
                 }
                 
-                // Auto-stop recording after duration
-                setTimeout(() => {
+                // 設置自動停止錄製計時器
+                autoStopTimeout = setTimeout(() => {
                     if (recording) {
+                        console.log('⏰ 達到最長錄製時間，自動停止');
                         stopTriggeredRecording();
                     }
                 }, detectionSettings.audioDuration * 1000);
@@ -756,11 +828,80 @@
             recording = false;
             clearInterval(interval);
             
+            // 清除自動停止計時器
+            if (autoStopTimeout) {
+                clearTimeout(autoStopTimeout);
+                autoStopTimeout = null;
+            }
+            
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
             }
             
+            // 重置狀態顯示
+            const status = document.getElementById('status');
+            if (audioDetectionActive) {
+                status.textContent = '👁️🎵 自動偵測中';
+                status.style.background = '';
+                status.style.transform = '';
+            }
+            
             console.log('⏹️ 自動錄製結束');
+        }
+        
+        function showAudioRecordingIndicator() {
+            // 創建音頻錄製指示器
+            let audioIndicator = document.getElementById('audioIndicator');
+            if (!audioIndicator) {
+                audioIndicator = document.createElement('div');
+                audioIndicator.id = 'audioIndicator';
+                audioIndicator.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    width: 200px;
+                    height: 80px;
+                    background: rgba(255, 75, 87, 0.9);
+                    border-radius: 10px;
+                    border: 2px solid #ff6b6b;
+                    z-index: 1000;
+                    padding: 15px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-direction: column;
+                    color: white;
+                    font-weight: bold;
+                    animation: recordPulse 1.5s infinite;
+                `;
+                
+                const icon = document.createElement('div');
+                icon.textContent = '🎤';
+                icon.style.cssText = 'font-size: 24px; margin-bottom: 5px;';
+                
+                const text = document.createElement('div');
+                text.textContent = '錄音中...';
+                text.style.cssText = 'font-size: 14px;';
+                
+                audioIndicator.appendChild(icon);
+                audioIndicator.appendChild(text);
+                document.body.appendChild(audioIndicator);
+                
+                // 添加脈衝動畫
+                if (!document.getElementById('recordPulseStyle')) {
+                    const style = document.createElement('style');
+                    style.id = 'recordPulseStyle';
+                    style.textContent = '@keyframes recordPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } }';
+                    document.head.appendChild(style);
+                }
+            }
+        }
+        
+        function hideAudioRecordingIndicator() {
+            const audioIndicator = document.getElementById('audioIndicator');
+            if (audioIndicator) {
+                audioIndicator.remove();
+            }
         }
         
         function showVideoPreview(stream) {
@@ -851,9 +992,11 @@
                 localStorage.setItem('tcldcam_files', JSON.stringify(recordingFiles));
                 console.log(`✅ 自動${isVideo ? '錄影' : '錄音'}保存: ${fileName} (${formatFileSize(blob.size)})`);
                 
-                // Hide video preview
+                // Hide video preview or audio indicator
                 if (isVideo) {
                     hideVideoPreview();
+                } else {
+                    hideAudioRecordingIndicator();
                 }
                 
                 // Show notification
@@ -1209,7 +1352,7 @@
             console.log('📱 手機版適配初始化完成');
         });
         
-        console.log('🚀 TCLDCAM v1.1.1 - 高精度音頻偵測版本');
+        console.log('🚀 TCLDCAM v1.1.2 - 音頻偵測與錄製修復版本');
         console.log('✨ 功能列表:');
         console.log('   🎵 真實 dB 音量測量 (RMS + 對數轉換)');
         console.log('   🎯 精確閾值控制 (10-60 dB 範圍)');
