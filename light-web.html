@@ -147,6 +147,7 @@
             <div style="text-align: center; margin-top: 15px;">
                 <button id="testRecordBtn" class="btn" onclick="testRecording()" style="background: #27ae60; font-size: 0.9em; padding: 12px 20px;">🧪 測試錄製</button>
                 <button id="testTriggerBtn" class="btn" onclick="testTrigger()" style="background: #3742fa; font-size: 0.9em; padding: 12px 20px;">🔥 測試觸發</button>
+                <button id="diagnoseMacBtn" class="btn" onclick="diagnoseMacOS()" style="background: #e67e22; font-size: 0.9em; padding: 12px 20px;">🍎 macOS 診斷</button>
             </div>
             
             <div class="status">
@@ -270,7 +271,7 @@
         </div>
         
         <p style="text-align: center; margin-top: 30px; opacity: 0.7; font-size: 0.9em;">
-            版本 v1.1.5 | 重新設計音頻觸發系統 | 512MB RAM最佳化
+            版本 v1.1.6 | macOS Safari 音頻修復 | 512MB RAM最佳化
         </p>
     </div>
     
@@ -353,8 +354,28 @@
         async function startAutoDetection() {
             try {
                 console.log('🎵 請求音頻權限...');
-                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // macOS 特殊音頻配置
+                const isMacOS = navigator.platform.indexOf('Mac') > -1;
+                const audioConstraints = {
+                    audio: {
+                        echoCancellation: false, // macOS Safari 可能與這個有問題
+                        noiseSuppression: false, // 關閉降噪以獲得更原始數據
+                        autoGainControl: false,  // 關閉自動增益控制
+                        sampleRate: { ideal: 44100 }, // macOS 標準采樣率
+                        channelCount: { ideal: 1 },   // 單聲道
+                    }
+                };
+                
+                console.log(`🖥️ 當前平台: ${navigator.platform}`);
+                console.log(`📱 用戶代理: ${navigator.userAgent.substring(0, 100)}...`);
+                
+                const audioStream = await navigator.mediaDevices.getUserMedia(
+                    isMacOS ? audioConstraints : { audio: true }
+                );
                 console.log('✅ 音頻權限獲取成功');
+                console.log(`🎤 音頻軌道數量: ${audioStream.getAudioTracks().length}`);
+                console.log(`🎤 音頻軌道設定: ${JSON.stringify(audioStream.getAudioTracks()[0].getSettings())}`);
                 
                 // Setup audio detection first
                 if (detectionSettings.audioAutoTrigger) {
@@ -394,13 +415,29 @@
         
         function setupAudioDetection(audioStream) {
             try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                // macOS Safari 特殊處理
+                const isMacOS = navigator.platform.indexOf('Mac') > -1;
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
                 
-                // Check if context is suspended (common in mobile browsers)
+                console.log(`🖥️ 平台檢測: macOS=${isMacOS}, Safari=${isSafari}`);
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 44100, // macOS 偏好的采樣率
+                    latencyHint: 'interactive' // 減少延遲
+                });
+                
+                console.log(`🎵 音頻上下文狀態: ${audioContext.state}`);
+                console.log(`🎵 采樣率: ${audioContext.sampleRate} Hz`);
+                
+                // macOS Safari 需要用戶手勢激活音頻上下文
                 if (audioContext.state === 'suspended') {
-                    console.log('🔊 音頻上下文被暫停，嘗試恢復...');
+                    console.log('🔊 音頻上下文被暫停，需要用戶手勢激活...');
+                    // 立即嘗試恢復
                     audioContext.resume().then(() => {
                         console.log('✅ 音頻上下文恢復成功');
+                    }).catch(error => {
+                        console.error('❌ 音頻上下文恢復失敗:', error);
+                        alert('⚠️ macOS Safari 需要您點擊頁面任意處來激活音頻偵測功能');
                     });
                 }
                 
@@ -436,7 +473,17 @@
         }
         
         function monitorAudio() {
-            if (!audioDetectionActive || !analyser) return;
+            if (!audioDetectionActive || !analyser) {
+                if (!audioDetectionActive) console.log('⚠️ audioDetectionActive = false');
+                if (!analyser) console.log('⚠️ analyser 未初始化');
+                return;
+            }
+            
+            // macOS Safari 音頻上下文狀態檢查
+            if (audioContext && audioContext.state !== 'running') {
+                console.log(`⚠️ 音頻上下文狀態異常: ${audioContext.state}, 嘗試恢復...`);
+                audioContext.resume();
+            }
             
             try {
                 // 使用時域數據獲得真實的音量測量
@@ -747,6 +794,59 @@
                     console.error('❌ 測試錄製失敗:', error);
                     alert(`測試錄製失敗: ${error.message}\n\n請檢查瀏覽器權限設定。`);
                 });
+        }
+        
+        function diagnoseMacOS() {
+            console.log('🍎 開始 macOS 音頻診斷...');
+            
+            const isMacOS = navigator.platform.indexOf('Mac') > -1;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const isChrome = navigator.userAgent.indexOf('Chrome') > -1;
+            
+            let diagnosis = '🍎 macOS 音頻診斷報告\n\n';
+            diagnosis += `🖥️ 平台: ${navigator.platform}\n`;
+            diagnosis += `🌐 瀏覽器: ${isSafari ? 'Safari' : isChrome ? 'Chrome' : 'Other'}\n`;
+            diagnosis += `📱 用戶代理: ${navigator.userAgent.substring(0, 80)}...\n\n`;
+            
+            // 音頻上下文檢查
+            if (audioContext) {
+                diagnosis += `🎵 音頻上下文狀態: ${audioContext.state}\n`;
+                diagnosis += `🎵 采樣率: ${audioContext.sampleRate} Hz\n`;
+                diagnosis += `🎵 偵測活動: ${audioDetectionActive ? '✅ 是' : '❌ 否'}\n`;
+            } else {
+                diagnosis += `❌ 音頻上下文未初始化\n`;
+            }
+            
+            // 權限檢查
+            if (navigator.mediaDevices) {
+                navigator.permissions.query({ name: 'microphone' }).then(result => {
+                    diagnosis += `🎤 麥克風權限: ${result.state}\n`;
+                    console.log(diagnosis);
+                    alert(diagnosis + '\n📋 詳細信息已輸出到 Console');
+                }).catch(() => {
+                    console.log(diagnosis);
+                    alert(diagnosis + '\n📋 詳細信息已輸出到 Console');
+                });
+            } else {
+                diagnosis += `❌ MediaDevices API 不可用\n`;
+                console.log(diagnosis);
+                alert(diagnosis);
+            }
+            
+            // 測試音頻上下文激活
+            if (audioContext && audioContext.state === 'suspended') {
+                diagnosis += `\n💡 建議: 點擊頁面任意處激活音頻上下文`;
+                audioContext.resume().then(() => {
+                    console.log('✅ 診斷過程中成功激活音頻上下文');
+                });
+            }
+            
+            // 檢查是否有活動的音頻軌道
+            if (stream && stream.getAudioTracks().length > 0) {
+                const track = stream.getAudioTracks()[0];
+                diagnosis += `🎤 音頻軌道狀態: ${track.readyState}\n`;
+                diagnosis += `🎤 音頻軌道設定: ${JSON.stringify(track.getSettings())}\n`;
+            }
         }
         
         function testTrigger() {
@@ -1443,14 +1543,47 @@
             }
         }
         
+        // macOS 音頻上下文激活
+        function activateAudioContext() {
+            if (audioContext && audioContext.state === 'suspended') {
+                console.log('🔄 用戶手勢觸發，激活音頻上下文...');
+                audioContext.resume().then(() => {
+                    console.log('✅ macOS 音頻上下文激活成功！');
+                    document.removeEventListener('click', activateAudioContext);
+                    document.removeEventListener('touchstart', activateAudioContext);
+                }).catch(error => {
+                    console.error('❌ 音頻上下文激活失敗:', error);
+                });
+            }
+        }
+
+        // macOS 特殊處理
+        function handleMacOSAudio() {
+            const isMacOS = navigator.platform.indexOf('Mac') > -1;
+            if (isMacOS) {
+                console.log('🍎 檢測到 macOS，添加音頻激活監聽器');
+                document.addEventListener('click', activateAudioContext);
+                document.addEventListener('touchstart', activateAudioContext);
+                
+                // 顯示 macOS 提示
+                setTimeout(() => {
+                    if (audioContext && audioContext.state === 'suspended') {
+                        alert('🍎 macOS 用戶提示：\n\n為了啟用音頻偵測功能，請：\n1. 確保您已允許麥克風權限\n2. 點擊頁面任意處激活音頻\n3. 檢查 Safari 設定中的麥克風權限');
+                    }
+                }, 3000);
+            }
+        }
+        
         // 頁面載入時初始化
         document.addEventListener('DOMContentLoaded', () => {
             checkMobileCompatibility();
             requestMobilePermissions();
+            handleMacOSAudio();
             console.log('📱 手機版適配初始化完成');
+            console.log('🍎 macOS 相容性檢查完成');
         });
         
-        console.log('🚀 TCLDCAM v1.1.5 - 重新設計音頻觸發系統版本');
+        console.log('🚀 TCLDCAM v1.1.6 - macOS Safari 音頻修復版本');
         console.log('✨ 功能列表:');
         console.log('   🎵 真實 dB 音量測量 (RMS + 對數轉換)');
         console.log('   🎯 線性音量觸發系統 (5-80 範圍)');
