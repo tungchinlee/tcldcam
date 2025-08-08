@@ -147,7 +147,10 @@
             <div style="text-align: center; margin-top: 15px;">
                 <button id="testRecordBtn" class="btn" onclick="testRecording()" style="background: #27ae60; font-size: 0.9em; padding: 12px 20px;">🧪 測試錄製</button>
                 <button id="testTriggerBtn" class="btn" onclick="testTrigger()" style="background: #3742fa; font-size: 0.9em; padding: 12px 20px;">🔥 測試觸發</button>
-                <button id="diagnoseMacBtn" class="btn" onclick="diagnoseMacOS()" style="background: #e67e22; font-size: 0.9em; padding: 12px 20px;">🍎 macOS 診斷</button>
+            </div>
+            <div style="text-align: center; margin-top: 10px;">
+                <button id="diagnoseMacBtn" class="btn" onclick="diagnoseMacOS()" style="background: #e67e22; font-size: 0.9em; padding: 12px 20px;">🍎 診斷</button>
+                <button id="forceAudioBtn" class="btn" onclick="forceAudioTest()" style="background: #8e44ad; font-size: 0.9em; padding: 12px 20px;">⚡ 強制測試</button>
             </div>
             
             <div class="status">
@@ -271,7 +274,7 @@
         </div>
         
         <p style="text-align: center; margin-top: 30px; opacity: 0.7; font-size: 0.9em;">
-            版本 v1.1.6 | macOS Safari 音頻修復 | 512MB RAM最佳化
+            版本 v1.1.7 | 修復監聽循環停止問題 | 512MB RAM最佳化
         </p>
     </div>
     
@@ -463,8 +466,21 @@
                 console.log(`   - 平滑化: ${analyser.smoothingTimeConstant}`);
                 console.log(`   - 音頻上下文狀態: ${audioContext.state}`);
                 
-                // Start audio monitoring
+                // Start audio monitoring - 強制啟動
+                console.log('🚀 強制啟動音頻監聽循環...');
                 monitorAudio();
+                
+                // 備用監聽器 - 確保一定有監聽在運行
+                setInterval(() => {
+                    if (audioDetectionActive && analyser && audioContext && audioContext.state === 'running') {
+                        // 檢查監聽是否還在運行
+                        const currentTime = Date.now();
+                        if (!window.lastAudioCheck || currentTime - window.lastAudioCheck > 3000) {
+                            console.log('🔄 備用監聽器檢測到監聽可能停止，重新啟動...');
+                            monitorAudio();
+                        }
+                    }
+                }, 2000);
                 
             } catch (error) {
                 console.error('音頻偵測初始化失敗:', error);
@@ -474,18 +490,24 @@
         
         function monitorAudio() {
             if (!audioDetectionActive || !analyser) {
-                if (!audioDetectionActive) console.log('⚠️ audioDetectionActive = false');
-                if (!analyser) console.log('⚠️ analyser 未初始化');
+                if (!audioDetectionActive) console.log('⚠️ audioDetectionActive = false, 停止監聽');
+                if (!analyser) console.log('⚠️ analyser 未初始化, 停止監聽');
                 return;
             }
             
             // macOS Safari 音頻上下文狀態檢查
             if (audioContext && audioContext.state !== 'running') {
-                console.log(`⚠️ 音頻上下文狀態異常: ${audioContext.state}, 嘗試恢復...`);
+                console.log(`⚠️ 音頻上下文狀態: ${audioContext.state}, 嘗試恢復並繼續監聽...`);
                 audioContext.resume();
+                // 繼續監聽，不要停止
+                requestAnimationFrame(monitorAudio);
+                return;
             }
             
             try {
+                // 心跳檢測 - 記錄監聽器還在運行
+                window.lastAudioCheck = Date.now();
+                
                 // 使用時域數據獲得真實的音量測量
                 analyser.getByteTimeDomainData(dataArray);
                 
@@ -534,11 +556,17 @@
                 }
                 
             } catch (error) {
-                console.error('音頻分析錯誤:', error);
+                console.error('❌ 音頻分析錯誤:', error);
+                console.error('錯誤詳情:', error.message);
+                // 即使出錯也要繼續監聽
             }
             
-            // Continue monitoring
-            requestAnimationFrame(monitorAudio);
+            // 強制繼續監聽 - 無論如何都要繼續
+            if (audioDetectionActive) {
+                requestAnimationFrame(monitorAudio);
+            } else {
+                console.log('🛑 audioDetectionActive = false, 停止監聽循環');
+            }
         }
         
         let lastTriggerTime = 0;
@@ -794,6 +822,63 @@
                     console.error('❌ 測試錄製失敗:', error);
                     alert(`測試錄製失敗: ${error.message}\n\n請檢查瀏覽器權限設定。`);
                 });
+        }
+        
+        function forceAudioTest() {
+            console.log('⚡ 強制音頻測試開始...');
+            
+            // 強制檢查所有關鍵變量
+            console.log(`🔍 全面檢查:`);
+            console.log(`   audioDetectionActive: ${audioDetectionActive}`);
+            console.log(`   analyser: ${analyser ? '已初始化' : '未初始化'}`);
+            console.log(`   audioContext: ${audioContext ? audioContext.state : '未初始化'}`);
+            console.log(`   stream: ${stream ? '已連接' : '未連接'}`);
+            console.log(`   audioAutoTrigger: ${detectionSettings.audioAutoTrigger}`);
+            console.log(`   audioThreshold: ${detectionSettings.audioThreshold}dB`);
+            
+            if (audioDetectionActive && analyser) {
+                console.log('🔥 強制執行一次音頻分析...');
+                
+                // 強制執行一次監聽循環
+                try {
+                    analyser.getByteTimeDomainData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        const amplitude = (dataArray[i] - 128) / 128;
+                        sum += amplitude * amplitude;
+                    }
+                    const rms = Math.sqrt(sum / dataArray.length);
+                    const volumePercentage = Math.floor(rms * 100);
+                    const linearVolume = Math.floor(Math.sqrt(rms) * 100);
+                    const displayVolumeDb = Math.max(volumePercentage, linearVolume);
+                    
+                    console.log(`⚡ 強制測試結果: ${displayVolumeDb}dB (RMS: ${(rms*1000).toFixed(2)})`);
+                    
+                    // 強制更新UI
+                    document.getElementById('volume').textContent = `${displayVolumeDb} dB`;
+                    document.getElementById('debug').textContent = `⚡強制測試: ${displayVolumeDb}/${detectionSettings.audioThreshold}dB`;
+                    
+                    // 強制觸發測試（如果超過閾值）
+                    if (displayVolumeDb >= detectionSettings.audioThreshold) {
+                        console.log('🚨 強制測試觸發條件滿足，立即觸發！');
+                        triggerAudioDetection(displayVolumeDb);
+                    }
+                    
+                    alert(`⚡ 強制測試完成\n\n音量: ${displayVolumeDb}dB\n閾值: ${detectionSettings.audioThreshold}dB\n${displayVolumeDb >= detectionSettings.audioThreshold ? '✅ 應該觸發' : '❌ 未達閾值'}`);
+                    
+                } catch (error) {
+                    console.error('❌ 強制測試失敗:', error);
+                    alert(`❌ 強制測試失敗: ${error.message}`);
+                }
+            } else {
+                alert('❌ 無法進行強制測試\n請先啟動音頻偵測功能');
+            }
+            
+            // 重新啟動監聽循環
+            if (audioDetectionActive && analyser) {
+                console.log('🔄 重新啟動監聽循環...');
+                monitorAudio();
+            }
         }
         
         function diagnoseMacOS() {
@@ -1583,7 +1668,7 @@
             console.log('🍎 macOS 相容性檢查完成');
         });
         
-        console.log('🚀 TCLDCAM v1.1.6 - macOS Safari 音頻修復版本');
+        console.log('🚀 TCLDCAM v1.1.7 - 修復監聽循環停止問題版本');
         console.log('✨ 功能列表:');
         console.log('   🎵 真實 dB 音量測量 (RMS + 對數轉換)');
         console.log('   🎯 線性音量觸發系統 (5-80 範圍)');

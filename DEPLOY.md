@@ -1,13 +1,13 @@
 # 🐳 TCLDCAM Docker 部署狀態
 
 ## 最新版本
-**v1.1.6** - 2025-08-08 18:15:19
+**v1.1.7** - 2025-08-08 18:33:07
 
 ## 部署說明
 Docker deployment
 
 ## Docker 鏡像
-- `tcldcam:v1.1.6`
+- `tcldcam:v1.1.7`
 - `tcldcam:latest`
 
 ## 部署URL
@@ -21,15 +21,15 @@ Docker deployment
 docker-compose up -d
 
 # 或直接運行
-docker run -p 8080:8080 tcldcam:v1.1.6
+docker run -p 8080:8080 tcldcam:v1.1.7
 ```
 
 ## 版本歷史
+e222e5e 🐳 Docker Deploy v1.1.6 - Docker deployment
 cb02d05 🐳 Docker Deploy v1.1.5 - Docker deployment
 1579641 🐳 Docker Deploy v1.1.4 - Docker deployment
 76f6ac4 🐳 Docker Deploy v1.1.3 - Docker deployment
 a4da3d5 🐳 Docker Deploy v1.1.2 - Docker deployment
-6c7b2aa 🐳 Docker Deploy v1.1.1 - 修復音頻偵測精確度: RMS時域分析, 真實dB轉換, 30dB預設閾值, 實時除錯顯示
 
 ## 技術棧
 - React Native + Expo
