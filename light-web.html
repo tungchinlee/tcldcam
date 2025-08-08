@@ -155,7 +155,7 @@
                 <div class="row"><span>👁️ 視覺:</span><span id="visual">未啟動</span></div>
                 <div class="row"><span>⏱️ 時間:</span><span id="time">00:00</span></div>
                 <div class="row"><span>🔍 實時:</span><span id="debug">點擊開始偵測測試麥克風</span></div>
-                <div class="row"><span>🎯 閾值:</span><span id="thresholdDisplay">30 dB</span></div>
+                <div class="row"><span>🎯 閾值:</span><span id="thresholdDisplay">15 dB</span></div>
             </div>
             
             <div class="grid">
@@ -186,12 +186,12 @@
             <h2 style="text-align: center; margin-bottom: 20px;">⚙️ 偵測設定</h2>
             <div class="status">
                 <h3>🎵 聲音偵測設定</h3>
-                <div class="row"><span>偵測閾值:</span><span id="audioThresholdValue">30 dB</span></div>
-                <input type="range" id="audioThresholdSlider" style="width: 100%; margin: 10px 0;" min="10" max="60" value="30" oninput="updateAudioThreshold(this.value)">
+                <div class="row"><span>偵測閾值:</span><span id="audioThresholdValue">15 dB</span></div>
+                <input type="range" id="audioThresholdSlider" style="width: 100%; margin: 10px 0;" min="5" max="80" value="15" oninput="updateAudioThreshold(this.value)">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8em; opacity: 0.7; margin-top: -5px;">
-                    <span>很靈敏 (10)</span>
-                    <span>中等 (30)</span>
-                    <span>不靈敏 (60)</span>
+                    <span>極靈敏 (5)</span>
+                    <span>中等 (25)</span>
+                    <span>高閾值 (80)</span>
                 </div>
                 
                 <div class="row"><span>持續時間:</span><span id="audioDurationValue">2 秒</span></div>
@@ -270,7 +270,7 @@
         </div>
         
         <p style="text-align: center; margin-top: 30px; opacity: 0.7; font-size: 0.9em;">
-            版本 v1.1.4 | 加強觸發除錯與測試功能 | 512MB RAM最佳化
+            版本 v1.1.5 | 重新設計音頻觸發系統 | 512MB RAM最佳化
         </p>
     </div>
     
@@ -288,7 +288,7 @@
         let videoRecordingStream = null;
         
         let detectionSettings = {
-            audioThreshold: 30, // 更合理的預設閾值
+            audioThreshold: 15, // 降低預設閾值使其更容易觸發
             audioDuration: 2,
             audioAutoTrigger: true,
             visualSensitivity: 50,
@@ -450,39 +450,40 @@
                 }
                 const rms = Math.sqrt(sum / dataArray.length);
                 
-                // 校正的 dB 轉換 - 使用更準確的音頻測量
-                // 將 RMS 值映射到合理的 dB 範圍 (0-100 dB)
-                let calibratedDb;
-                if (rms > 0.001) {
-                    // 對於有聲音的情況，使用對數轉換並校正到實際範圍
-                    const rawDb = 20 * Math.log10(rms);
-                    // 映射 -60dB 到 +20dB 範圍到 0-80 顯示範圍
-                    calibratedDb = Math.max(0, Math.min(100, rawDb + 80));
-                } else {
-                    calibratedDb = 0; // 無聲音時顯示 0
-                }
+                // 新的實用音頻測量系統 - 使用百分比方式
+                const volumePercentage = Math.floor(rms * 100); // 0-100% 音量
                 
-                const displayVolumeDb = Math.floor(calibratedDb);
+                // 傳統 dB 轉換作為參考
+                const traditionalDb = rms > 0.001 ? Math.max(0, Math.min(100, 20 * Math.log10(rms) + 80)) : 0;
                 
-                // Update volume display
+                // 使用範圍 0-100 的線性音量值，更直觀
+                const linearVolume = Math.floor(Math.sqrt(rms) * 100); // 平方根轉換，更合理
+                const displayVolumeDb = Math.max(volumePercentage, linearVolume); // 取較高值
+                
+                // Update volume display with more intuitive values
                 document.getElementById('volume').textContent = `${displayVolumeDb} dB`;
                 
-                // 直接使用顯示的 dB 值進行閾值比較
+                // 使用新的音量系統進行閾值比較
                 const thresholdMet = displayVolumeDb >= detectionSettings.audioThreshold;
                 
-                // 實時除錯資訊 - 顯示更清楚的數據
-                document.getElementById('debug').textContent = `RMS:${(rms * 1000).toFixed(2)} 當前:${displayVolumeDb}dB 閾值:${detectionSettings.audioThreshold}dB ${thresholdMet ? '🔥' : '⭕'}`;
+                // 實時除錯資訊 - 更詳細的狀態
+                const debugText = `${thresholdMet ? '🔥觸發' : '⭕未觸發'} ${displayVolumeDb}/${detectionSettings.audioThreshold}dB [RMS:${(rms*1000).toFixed(1)}]`;
+                document.getElementById('debug').textContent = debugText;
                 
-                // Debug info - 詳細記錄
-                if (displayVolumeDb > 5) { // 只在有聲音時記錄
-                    const triggerStatus = thresholdMet ? '🔥觸發!' : '⭕未達閾值';
-                    const autoTriggerStatus = detectionSettings.audioAutoTrigger ? '✅已啟用' : '❌已關閉';
-                    console.log(`🎵 音頻分析: RMS=${(rms * 1000).toFixed(3)}, dB=${displayVolumeDb}, 閾值=${detectionSettings.audioThreshold}dB ${triggerStatus}, 自動錄製:${autoTriggerStatus}`);
+                // 加強的除錯記錄
+                if (displayVolumeDb > 3) { // 降低門檻
+                    const status = thresholdMet ? '🔥觸發' : '⭕無觸發';
+                    const autoStatus = detectionSettings.audioAutoTrigger ? '✅ON' : '❌OFF';
+                    console.log(`🎵 ${status}: ${displayVolumeDb}dB>=${detectionSettings.audioThreshold}dB, RMS=${(rms*1000).toFixed(2)}, 自動錄製:${autoStatus}, 錄製中:${recording}`);
                 }
                 
-                // Check if volume exceeds threshold
+                // 加強觸發檢查
                 if (thresholdMet) {
+                    console.log(`🚨 音頻閾值達到! 立即調用 triggerAudioDetection(${displayVolumeDb})`);
                     triggerAudioDetection(displayVolumeDb);
+                } else if (displayVolumeDb > detectionSettings.audioThreshold * 0.8) {
+                    // 接近閾值時的提示
+                    console.log(`🟡 接近閾值: ${displayVolumeDb}dB (${(displayVolumeDb/detectionSettings.audioThreshold*100).toFixed(0)}%)`);
                 }
                 
             } catch (error) {
@@ -759,10 +760,24 @@
             }
             
             // 模擬觸發音頻偵測
-            const testVolume = detectionSettings.audioThreshold + 5; // 超過閾值5dB
+            const testVolume = detectionSettings.audioThreshold + 10; // 超過閾值10dB
             console.log(`🧪 模擬音頻觸發: ${testVolume}dB (閾值: ${detectionSettings.audioThreshold}dB)`);
+            console.log(`🔧 檢查清單:`);
+            console.log(`   - 偵測已啟動: ${audioDetectionActive ? '✅' : '❌'}`);
+            console.log(`   - 自動觸發: ${detectionSettings.audioAutoTrigger ? '✅' : '❌'}`);
+            console.log(`   - 目前錄製中: ${recording ? '✅' : '❌'}`);
             
+            alert(`🧪 測試觸發開始！\n\n設定檢查:\n✅ 偵測活動: ${audioDetectionActive}\n✅ 自動觸發: ${detectionSettings.audioAutoTrigger}\n✅ 測試音量: ${testVolume}dB\n✅ 閾值設定: ${detectionSettings.audioThreshold}dB\n\n請觀察 Console 和狀態顯示的變化。`);
+            
+            // 立即觸發測試
             triggerAudioDetection(testVolume);
+            
+            // 3秒後再次顯示結果
+            setTimeout(() => {
+                const success = recording || (Date.now() - lastTriggerTime < 5000);
+                console.log(`🧪 測試結果: ${success ? '✅ 觸發成功' : '❌ 觸發失敗'}`);
+                alert(`🧪 測試結果: ${success ? '✅ 觸發成功，已開始錄製' : '❌ 觸發失敗，請檢查設定'}`);
+            }, 3000);
         }
         
         function testModel(type) {
@@ -1435,10 +1450,10 @@
             console.log('📱 手機版適配初始化完成');
         });
         
-        console.log('🚀 TCLDCAM v1.1.4 - 加強觸發除錯與測試版本');
+        console.log('🚀 TCLDCAM v1.1.5 - 重新設計音頻觸發系統版本');
         console.log('✨ 功能列表:');
         console.log('   🎵 真實 dB 音量測量 (RMS + 對數轉換)');
-        console.log('   🎯 精確閾值控制 (10-60 dB 範圍)');
+        console.log('   🎯 線性音量觸發系統 (5-80 範圍)');
         console.log('   🎬 自動錄影 + 錄音同步');
         console.log('   📱 手機/桌面 RWD 適配');
         console.log('🔊 使用說明:');
